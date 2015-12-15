@@ -1,6 +1,5 @@
-import gzip
-import os.path
-import shutil
+import base64
+import io
 import tempfile
 from contextlib import contextmanager
 
@@ -95,39 +94,38 @@ class S3CSVTarget(S3Target):
     @contextmanager
     def _open_writer(self):
         with self.open('w') as f:
-            if self.compressed:
-                with gzip.GzipFile(filename=os.path.basename(self.path),
-                                   fileobj=f) as gzfile:
-                    yield gzfile
-            else:
-                yield f
+            yield f
 
     @contextmanager
     def _open_reader(self):
-        with self.open('r') as rawf:
-            if self.compressed:
-                with tempfile.TemporaryFile(mode='rw+b') as tmpfile:
-                    # gzip doesn't cooperate with luigi's S3 fake file
-                    # object so we need to copy to tmp
-                    shutil.copyfileobj(rawf, tmpfile)
-                    tmpfile.seek(0)
-                    yield tmpfile
-            else:
-                yield rawf
+        with self.open('r') as f:
+            yield f
 
     def write_csv(self, df, **kwargs):
         if self.kwargs_out:
             kwargs = toolz.merge(self.kwargs_out, kwargs)
         with self._open_writer() as f:
-            df.to_csv(f, **kwargs)
+            if self.compressed:
+                with tempfile.NamedTemporaryFile(mode='w+b') as tmp_w:
+                    df.to_csv(tmp_w.name, compression='gzip', **kwargs)
+                    with open(tmp_w.name, 'rb') as tmp_r:
+                        bytes_ = tmp_r.read()
+                        encoded_bytes = base64.b64encode(bytes_)
+                        f.write(str(encoded_bytes, 'utf-8'))
+            else:
+                df.to_csv(f, **kwargs)
 
     def read_csv(self, **kwargs):
         if self.kwargs_in:
             kwargs = toolz.merge(self.kwargs_in, kwargs)
         with self._open_reader() as f:
-            return pd.read_csv(f,
-                               compression='gzip' if self.compressed else None,
-                               **kwargs)
+            if self.compressed:
+                encoded_bytes = bytes(f.read(), 'utf-8')
+                bytes_ = base64.b64decode(encoded_bytes)
+                byte_stream = io.BytesIO(bytes_)
+                return pd.read_csv(byte_stream, compression='gzip', **kwargs)
+            else:
+                return pd.read_csv(f, **kwargs)
 
 
 class S3TypedCSVTarget(S3CSVTarget):
