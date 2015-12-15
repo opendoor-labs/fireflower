@@ -14,8 +14,7 @@ from fireflower.models import TaskOutput
 __all__ = [
     'DBTaskOutputTarget',
     'S3Target',
-    'S3CSVTarget',
-    'S3TypedCSVTarget',
+    'S3CSVTarget'
 ]
 
 
@@ -126,47 +125,3 @@ class S3CSVTarget(S3Target):
                 return pd.read_csv(byte_stream, compression='gzip', **kwargs)
             else:
                 return pd.read_csv(f, **kwargs)
-
-
-class S3TypedCSVTarget(S3CSVTarget):
-    def __init__(self, path, types, compressed=True, kwargs_in=None,
-                 kwargs_out=None):
-        self.types = types
-        super(S3TypedCSVTarget, self).__init__(path, compressed,
-                                               kwargs_in, kwargs_out)
-
-    def write_typed_csv(self, df, **kwargs):
-        if self.kwargs_out:
-            kwargs = toolz.merge(self.kwargs_out, kwargs)
-        with self._open_writer() as f:
-            write_typed_csv(f, df, self.types, **kwargs)
-
-    def read_typed_csv(self, **kwargs):
-        if self.kwargs_in:
-            kwargs = toolz.merge(self.kwargs_in, kwargs)
-        with self._open_reader() as f:
-            return read_typed_csv(f,
-                                  self.types,
-                                  compression='gzip' if self.compressed else None,
-                                  **kwargs)
-
-
-def read_typed_csv(input, types, *args, **kwargs):
-    inp = pd.read_csv(input,
-                      dtype={colname: coltype.serialization_dtype
-                             for colname, coltype in types.iteritems()},
-                      *args,
-                      **kwargs)
-
-    return pd.DataFrame.from_items(
-        (colname,
-         types[colname].input(col) if colname in types else col)
-        for colname, col in inp.iteritems())
-
-
-def write_typed_csv(output, df, types, *args, **kwargs):
-    transformed = pd.DataFrame.from_items(
-        (colname,
-         types[colname].output(col) if colname in types else col)
-        for colname, col in df.iteritems())
-    transformed.to_csv(output, *args, **kwargs)

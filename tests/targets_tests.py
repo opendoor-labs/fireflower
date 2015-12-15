@@ -39,4 +39,3 @@ class TargetsTests(TestCase):
         s.write_csv(df, index=False)
         read_result = s.read_csv()
         self.assertDictEqual(df.to_dict(), read_result.to_dict())
-
