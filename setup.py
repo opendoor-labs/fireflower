@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='fireflower',
-    version='1.0.1',
+    version='1.0.2',
     description='Enhancements for Luigi task management',
     url='https://github.com/opendoor-labs/fireflower',
     packages=find_packages(exclude=['contrib', 'docs', 'tests']),
