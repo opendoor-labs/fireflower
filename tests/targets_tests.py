@@ -24,8 +24,6 @@ class TargetsTests(TestCase):
         read_result = s.read_csv()
         self.assertDictEqual(df.to_dict(), read_result.to_dict())
 
-
-
     @mock_s3
     @tempdir()
     def test_s3_uncompressed_csv_target(self, tempd):
