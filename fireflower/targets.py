@@ -1,7 +1,7 @@
-import base64
-import io
-import tempfile
 from contextlib import contextmanager
+from io import TextIOWrapper
+from gzip import GzipFile
+
 
 import luigi
 from luigi.s3 import S3Target
@@ -110,11 +110,8 @@ class S3CSVTarget(S3Target):
             kwargs = toolz.merge(self.kwargs_out, kwargs)
         with self._open_writer() as f:
             if self.compressed:
-                with tempfile.NamedTemporaryFile(mode='w+b') as tmp_w:
-                    df.to_csv(tmp_w.name, compression='gzip', **kwargs)
-                    with open(tmp_w.name, 'rb') as tmp_r:
-                        bytes_ = tmp_r.read()
-                        f.write(bytes_)
+                with TextIOWrapper(GzipFile(fileobj=f, mode='wb')) as g:
+                    df.to_csv(g, **kwargs)
             else:
                 df.to_csv(f, **kwargs)
 
@@ -123,8 +120,7 @@ class S3CSVTarget(S3Target):
             kwargs = toolz.merge(self.kwargs_in, kwargs)
         with self._open_reader() as f:
             if self.compressed:
-                bytes_ = f.read()
-                byte_stream = io.BytesIO(bytes_)
-                return pd.read_csv(byte_stream, compression='gzip', **kwargs)
+                with TextIOWrapper(GzipFile(fileobj=f, mode='rb')) as g:
+                    return pd.read_csv(g, **kwargs)
             else:
                 return pd.read_csv(f, **kwargs)
