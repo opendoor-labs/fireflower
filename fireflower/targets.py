@@ -84,11 +84,16 @@ class DBTaskOutputTarget(luigi.Target):
 
 
 class S3CSVTarget(S3Target):
-    def __init__(self, path, compressed=True, kwargs_in=None, kwargs_out=None):
+    def __init__(self, path, compressed=True, kwargs_in=None, kwargs_out=None,
+                 format=None):
+
+        if compressed:
+            format = luigi.format.Nop
+
         self.compressed = compressed
         self.kwargs_in = kwargs_in
         self.kwargs_out = kwargs_out
-        super(S3CSVTarget, self).__init__(path)
+        super(S3CSVTarget, self).__init__(path, format)
 
     @contextmanager
     def _open_writer(self):
@@ -109,8 +114,7 @@ class S3CSVTarget(S3Target):
                     df.to_csv(tmp_w.name, compression='gzip', **kwargs)
                     with open(tmp_w.name, 'rb') as tmp_r:
                         bytes_ = tmp_r.read()
-                        encoded_bytes = base64.b64encode(bytes_)
-                        f.write(str(encoded_bytes, 'utf-8'))
+                        f.write(bytes_)
             else:
                 df.to_csv(f, **kwargs)
 
@@ -119,8 +123,7 @@ class S3CSVTarget(S3Target):
             kwargs = toolz.merge(self.kwargs_in, kwargs)
         with self._open_reader() as f:
             if self.compressed:
-                encoded_bytes = bytes(f.read(), 'utf-8')
-                bytes_ = base64.b64decode(encoded_bytes)
+                bytes_ = f.read()
                 byte_stream = io.BytesIO(bytes_)
                 return pd.read_csv(byte_stream, compression='gzip', **kwargs)
             else:
