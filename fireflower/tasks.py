@@ -41,6 +41,13 @@ class FireflowerOutputTask(FireflowerTask):
     Base luigi task class for using the signals task_outputs table to mark
     task completion and to also communicate return values to downstream tasks.
     """
+    force = luigi.BoolParameter(default=False, significant=False)
+
+    def __init__(self, *args, **kwargs):
+        super(FireflowerOutputTask, self).__init__(*args, **kwargs)
+        if self.force:
+            self.output().remove()
+
     def output(self):
         return DBTaskOutputTarget.create(self)
 
