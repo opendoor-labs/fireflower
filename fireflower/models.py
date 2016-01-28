@@ -1,6 +1,8 @@
 from datetime import datetime
 
+import luigi
 from luigi.db_task_history import DbTaskHistory, Base
+from luigi.task_register import load_task
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, TIMESTAMP, \
     desc, DateTime, orm
 from sqlalchemy.ext.declarative import declarative_base
@@ -85,6 +87,13 @@ class TaskRecord(FireflowerDeclBase):
         order_by=(desc(TaskEvent.ts), desc(TaskEvent.id)),
         backref='task')
 
+    def make_task(self, task_module : str) -> luigi.Task:
+        """ Reifies the luigi.Task object from its name and saved parameters """
+        return load_task(
+            task_module,
+            self.name,
+            {name: param.value for name, param in self.parameters.items()})
+
     def __repr__(self):
         return "TaskRecord(name=%s, host=%s)" % (self.name, self.host)
 
@@ -104,3 +113,10 @@ class TaskOutput(FireflowerDeclBase):
         self.value = value
         self.task_family = task_family
         self.params = params
+
+    def make_task(self, task_module : str) -> luigi.Task:
+        """ Reifies the luigi.Task object from its name and saved parameters """
+        return load_task(
+            task_module,
+            self.task_family,
+            self.params)
