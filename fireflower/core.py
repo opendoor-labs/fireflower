@@ -38,14 +38,13 @@ def luigi_run_with_sentry(func):
         try:
             return func(self, *args, **kwargs)
         except Exception:
-            type_, value, traceback_ = sys.exc_info()
             if FireflowerStateManager.sentry.client:
                 extra = {
                     'task_args': self.param_args,
                     'task_kwargs': self.param_kwargs,
                 }
                 FireflowerStateManager.sentry.captureException(extra=extra)
-            raise type_(value).with_traceback(traceback_)
+            raise
         finally:
             FireflowerStateManager.sentry.client.context.clear()
     return wrapper
