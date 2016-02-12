@@ -95,13 +95,6 @@ class S3CSVTarget(S3Target):
         self.kwargs_out = kwargs_out
         super(S3CSVTarget, self).__init__(path, format)
 
-    @staticmethod
-    def write_csv_rows(csv_writer, values, header=None):
-        if header:
-            csv_writer.writerow(header)
-        for value in values:
-            csv_writer.writerow(value)
-
     def write_csv_tuples(self, tuples, header_tuple=None):
         """Stream tuples to s3 as a csv
            tuples --  iterable of n-tuples
@@ -111,10 +104,16 @@ class S3CSVTarget(S3Target):
             if self.compressed:
                 with TextIOWrapper(GzipFile(fileobj=f, mode='wb')) as g:
                     csv_writer = csv.writer(g)
-                    self.write_csv_rows(csv_writer, tuples, header_tuple)
+                    if header_tuple:
+                        csv_writer.writerow(header_tuple)
+                    for t in tuples:
+                        csv_writer.writerow(t)
             else:
                 csv_writer = csv.writer(f)
-                self.write_csv_rows(csv_writer, tuples, header_tuple)
+                if header_tuple:
+                    csv_writer.writerow(header_tuple)
+                for t in tuples:
+                    csv_writer.writerow(t)
 
     def write_csv(self, df, **kwargs):
         if self.kwargs_out:
