@@ -1,7 +1,7 @@
+import csv
 from contextlib import contextmanager
 from io import TextIOWrapper
 from gzip import GzipFile
-
 
 import luigi
 from luigi.s3 import S3Target
@@ -95,6 +95,13 @@ class S3CSVTarget(S3Target):
         self.kwargs_out = kwargs_out
         super(S3CSVTarget, self).__init__(path, format)
 
+    @staticmethod
+    def write_csv_rows(csv_writer, values, header=None):
+        if header:
+            csv_writer.writerow(header)
+        for value in values:
+            csv_writer.writerow(value)
+
     @contextmanager
     def _open_writer(self):
         with self.open('w') as f:
@@ -104,6 +111,20 @@ class S3CSVTarget(S3Target):
     def _open_reader(self):
         with self.open('r') as f:
             yield f
+
+    def write_csv_tuples(self, tuples, header_tuple=None):
+        """Stream tuples to s3 as a csv
+           tuples --  iterable of n-tuples
+           header_tuple -- n-tuple that indicates fields for csv
+        """
+        with self._open_writer() as f:
+            if self.compressed:
+                with TextIOWrapper(GzipFile(fileobj=f, mode='wb')) as g:
+                    csv_writer = csv.writer(g)
+                    self.write_csv_rows(csv_writer, tuples, header_tuple)
+            else:
+                csv_writer = csv.writer(f)
+                self.write_csv_rows(csv_writer, tuples, header_tuple)
 
     def write_csv(self, df, **kwargs):
         if self.kwargs_out:
