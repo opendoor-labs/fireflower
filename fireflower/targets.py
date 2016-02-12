@@ -139,9 +139,20 @@ class S3CSVTarget(S3Target):
     def read_csv(self, **kwargs):
         if self.kwargs_in:
             kwargs = toolz.merge(self.kwargs_in, kwargs)
+
+        stream = 'chunksize' in kwargs
+
         with self._open_reader() as f:
             if self.compressed:
                 with TextIOWrapper(GzipFile(fileobj=f, mode='rb')) as g:
-                    return pd.read_csv(g, **kwargs)
+                    if stream:
+                        for chunk in pd.read_csv(g, **kwargs):
+                            yield chunk
+                    else:
+                        return pd.read_csv(g, **kwargs)
             else:
-                return pd.read_csv(f, **kwargs)
+                if stream:
+                    for chunk in pd.read_csv(f, **kwargs):
+                        yield chunk
+                else:
+                    return pd.read_csv(f, **kwargs)
