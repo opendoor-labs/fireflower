@@ -126,12 +126,12 @@ class S3CSVTarget(S3Target):
             else:
                 df.to_csv(f, **kwargs)
 
-    """
-        uses panda dataframe chunksize to stream a pandas df in chunks
-        chunksize should be greater than 1 to avoid header issues.
-        separate function from read_csv to avoid conflicting return types
-    """
     def read_csv_stream(self, **kwargs):
+        """
+            uses panda dataframe chunksize to stream a pandas df in chunks
+            chunksize should be greater than 1 to avoid header issues.
+            separate function from read_csv to avoid conflicting return types
+        """
         if self.kwargs_in:
             kwargs = toolz.merge(self.kwargs_in, kwargs)
 
