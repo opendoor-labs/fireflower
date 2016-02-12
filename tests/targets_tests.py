@@ -52,7 +52,7 @@ class TargetsTests(TestCase):
         tuples = [(1, 2), (3, 4)]
         s = S3CSVTarget(dest_path, compressed=False)
         s.write_csv_tuples(tuples, ('x', 'y'))
-        read_result = s.read_csv(chunksize=2)
+        read_result = s.read_csv_stream()
 
         exp_dict = {'x': {0: 1, 1: 3}, 'y': {0: 2, 1: 4}}
         combined_result = pd.concat(read_result)
@@ -83,7 +83,7 @@ class TargetsTests(TestCase):
         df = pd.DataFrame(index=range(1), data={'a': [1]})
         s = S3CSVTarget(dest_path, compressed=True)
         s.write_csv(df, index=False)
-        read_result = s.read_csv(chunksize=5)
+        read_result = s.read_csv_stream(chunksize=5)
         combined_result = pd.concat(read_result)
         self.assertDictEqual(df.to_dict(), combined_result.to_dict())
 
