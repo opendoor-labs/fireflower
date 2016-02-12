@@ -1,7 +1,7 @@
+import csv
 from contextlib import contextmanager
 from io import TextIOWrapper
 from gzip import GzipFile
-
 
 import luigi
 from luigi.s3 import S3Target
@@ -95,30 +95,62 @@ class S3CSVTarget(S3Target):
         self.kwargs_out = kwargs_out
         super(S3CSVTarget, self).__init__(path, format)
 
-    @contextmanager
-    def _open_writer(self):
+    def write_csv_tuples(self, tuples, header_tuple=None):
+        """Stream tuples to s3 as a csv
+           tuples --  iterable of n-tuples
+           header_tuple -- n-tuple that indicates fields for csv
+        """
         with self.open('w') as f:
-            yield f
-
-    @contextmanager
-    def _open_reader(self):
-        with self.open('r') as f:
-            yield f
+            if self.compressed:
+                with TextIOWrapper(GzipFile(fileobj=f, mode='wb')) as g:
+                    csv_writer = csv.writer(g)
+                    if header_tuple:
+                        csv_writer.writerow(header_tuple)
+                    for t in tuples:
+                        csv_writer.writerow(t)
+            else:
+                csv_writer = csv.writer(f)
+                if header_tuple:
+                    csv_writer.writerow(header_tuple)
+                for t in tuples:
+                    csv_writer.writerow(t)
 
     def write_csv(self, df, **kwargs):
         if self.kwargs_out:
             kwargs = toolz.merge(self.kwargs_out, kwargs)
-        with self._open_writer() as f:
+        with self.open('w') as f:
             if self.compressed:
                 with TextIOWrapper(GzipFile(fileobj=f, mode='wb')) as g:
                     df.to_csv(g, **kwargs)
             else:
                 df.to_csv(f, **kwargs)
 
+    def read_csv_stream(self, **kwargs):
+        """
+            uses panda dataframe chunksize to stream a pandas df in chunks
+            chunksize should be greater than 1 to avoid header issues.
+            separate function from read_csv to avoid conflicting return types
+        """
+        if self.kwargs_in:
+            kwargs = toolz.merge(self.kwargs_in, kwargs)
+
+        # default to 2 in case for headers
+        kwargs.setdefault('chunksize', 2)
+
+        with self.open('r') as f:
+            if self.compressed:
+                with TextIOWrapper(GzipFile(fileobj=f, mode='rb')) as g:
+                    for chunk in pd.read_csv(g, **kwargs):
+                        yield chunk
+            else:
+                for chunk in pd.read_csv(f, **kwargs):
+                    yield chunk
+
     def read_csv(self, **kwargs):
         if self.kwargs_in:
             kwargs = toolz.merge(self.kwargs_in, kwargs)
-        with self._open_reader() as f:
+
+        with self.open('r') as f:
             if self.compressed:
                 with TextIOWrapper(GzipFile(fileobj=f, mode='rb')) as g:
                     return pd.read_csv(g, **kwargs)
