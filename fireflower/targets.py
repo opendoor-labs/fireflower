@@ -22,7 +22,8 @@ __all__ = [
 class FireflowerS3Target(S3Target):
     """ Operates the same way as S3Target, except it looks for an environment variable
     LOCAL_S3_PATH, which is a path on your local machine to store s3 files. If this is set,
-    the target will read / write to this path by stripping off s3:// and following the rest of the path
+    the target will read / write to this path by stripping off s3:// and following the rest of the path.
+    Currently only supports compressed / Text formats, could support other formats as needed
     """
 
     fs = None
@@ -37,16 +38,19 @@ class FireflowerS3Target(S3Target):
 
         modified_path = self.path.replace('s3://', '')
         new_path = os.path.join(local_s3_path, modified_path)
+
+        is_compressed = getattr(self, 'compressed', False)
+
         if mode == 'w':
-            if getattr(self, 'compressed', None):
+            if is_compressed:
+                # compressed files are rewrapped later
                 return BufferedWriter(FileIO(new_path, 'w'))
             else:
-                # luigi files seem to be wrapped in a TextIOWrapper.
-                # if not wrapped, this causes errors in pandas csv writer
                 return TextIOWrapper(BufferedWriter(FileIO(new_path, 'w')))
 
         else:
-            if getattr(self, 'compressed', None):
+            if is_compressed:
+                # compressed files are rewrapped later
                 return BufferedReader(FileIO(new_path, 'r'))
             else:
                 return TextIOWrapper(BufferedReader(FileIO(new_path, 'r')))
