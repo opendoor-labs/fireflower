@@ -5,7 +5,7 @@ from unittest import TestCase, mock
 
 from moto import mock_s3
 
-from fireflower.targets import S3CSVTarget
+from fireflower.targets import S3CSVTarget, FireflowerS3Target
 from nose_parameterized import parameterized
 from testfixtures import TempDirectory
 
@@ -115,4 +115,26 @@ class TargetsTests(TestCase):
 
                 exp_dict = {'x': {0: 1, 1: 3}, 'y': {0: 2, 1: 4}}
                 self.assertDictEqual(read_result.to_dict(), exp_dict)
+
+    def test_local_file(self):
+        with TempDirectory() as d:
+
+            def getenv(v, _):
+                # Is there a better way to assert arguments?
+                self.assertEqual(v, 'LOCAL_S3_PATH')
+                return d.path
+
+            with mock.patch('fireflower.targets.os.getenv',
+                            side_effect=getenv):
+
+                s = FireflowerS3Target('some_file.txt')
+                with s.open('w') as fout:
+                    fout.write('asdf')
+                    fout.write('fdsa')
+                with s.open('r') as fin:
+                    expected_text = fin.read()
+                    self.assertEqual("asdffdsa", expected_text)
+
+
+
 

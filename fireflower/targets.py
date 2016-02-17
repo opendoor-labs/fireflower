@@ -38,7 +38,7 @@ class FireflowerS3Target(S3Target):
         modified_path = self.path.replace('s3://', '')
         new_path = os.path.join(local_s3_path, modified_path)
         if mode == 'w':
-            if self.compressed:
+            if getattr(self, 'compressed', None):
                 return BufferedWriter(FileIO(new_path, 'w'))
             else:
                 # luigi files seem to be wrapped in a TextIOWrapper.
@@ -46,7 +46,10 @@ class FireflowerS3Target(S3Target):
                 return TextIOWrapper(BufferedWriter(FileIO(new_path, 'w')))
 
         else:
-            return BufferedReader(FileIO(new_path, 'r'))
+            if getattr(self, 'compressed', None):
+                return BufferedReader(FileIO(new_path, 'r'))
+            else:
+                return TextIOWrapper(BufferedReader(FileIO(new_path, 'r')))
 
 
 class DBTaskOutputTarget(luigi.Target):
