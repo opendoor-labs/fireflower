@@ -1,6 +1,7 @@
+import os
 import csv
 from contextlib import contextmanager
-from io import TextIOWrapper
+from io import TextIOWrapper, BufferedWriter, FileIO, BufferedReader
 from gzip import GzipFile
 
 import luigi
@@ -16,6 +17,43 @@ __all__ = [
     'S3Target',
     'S3CSVTarget'
 ]
+
+
+class FireflowerS3Target(S3Target):
+    """ Operates the same way as S3Target, except it looks for an environment variable
+    LOCAL_S3_PATH, which is a path on your local machine to store s3 files. If this is set,
+    the target will read / write to this path by stripping off s3:// and following the rest of the path.
+    Currently only supports compressed / Text formats, could support other formats as needed
+    """
+
+    fs = None
+
+    def open(self, mode='r'):
+        if mode not in ('r', 'w'):
+            raise ValueError("Unsupported open mode '%s'" % mode)
+
+        local_s3_path = os.getenv('LOCAL_S3_PATH', None)
+        if not local_s3_path:
+            return super().open(mode)
+
+        modified_path = self.path.replace('s3://', '')
+        new_path = os.path.join(local_s3_path, modified_path)
+
+        is_compressed = getattr(self, 'compressed', False)
+
+        if mode == 'w':
+            if is_compressed:
+                # compressed files are rewrapped later
+                return BufferedWriter(FileIO(new_path, 'w'))
+            else:
+                return TextIOWrapper(BufferedWriter(FileIO(new_path, 'w')))
+
+        else:
+            if is_compressed:
+                # compressed files are rewrapped later
+                return BufferedReader(FileIO(new_path, 'r'))
+            else:
+                return TextIOWrapper(BufferedReader(FileIO(new_path, 'r')))
 
 
 class DBTaskOutputTarget(luigi.Target):
@@ -83,7 +121,7 @@ class DBTaskOutputTarget(luigi.Target):
                 task_output.value = value
 
 
-class S3CSVTarget(S3Target):
+class S3CSVTarget(FireflowerS3Target):
     def __init__(self, path, compressed=True, kwargs_in=None, kwargs_out=None,
                  format=None):
 
@@ -95,6 +133,13 @@ class S3CSVTarget(S3Target):
         self.kwargs_out = kwargs_out
         super(S3CSVTarget, self).__init__(path, format)
 
+    @staticmethod
+    def write_values(csv_writer, values, header=None):
+        if header:
+            csv_writer.writerow(header)
+        for v in values:
+            csv_writer.writerow(v)
+
     def write_csv_tuples(self, tuples, header_tuple=None):
         """Stream tuples to s3 as a csv
            tuples --  iterable of n-tuples
@@ -104,16 +149,10 @@ class S3CSVTarget(S3Target):
             if self.compressed:
                 with TextIOWrapper(GzipFile(fileobj=f, mode='wb')) as g:
                     csv_writer = csv.writer(g)
-                    if header_tuple:
-                        csv_writer.writerow(header_tuple)
-                    for t in tuples:
-                        csv_writer.writerow(t)
+                    self.write_values(csv_writer, tuples, header_tuple)
             else:
                 csv_writer = csv.writer(f)
-                if header_tuple:
-                    csv_writer.writerow(header_tuple)
-                for t in tuples:
-                    csv_writer.writerow(t)
+                self.write_values(csv_writer, tuples, header_tuple)
 
     def write_csv(self, df, **kwargs):
         if self.kwargs_out:
