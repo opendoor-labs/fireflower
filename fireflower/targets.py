@@ -1,6 +1,7 @@
+import os
 import csv
 from contextlib import contextmanager
-from io import TextIOWrapper
+from io import TextIOWrapper, BufferedWriter, FileIO, BufferedReader
 from gzip import GzipFile
 
 import luigi
@@ -16,6 +17,32 @@ __all__ = [
     'S3Target',
     'S3CSVTarget'
 ]
+
+
+class FireflowerS3Target(S3Target):
+
+    fs = None
+
+    def open(self, mode='r'):
+        if mode not in ('r', 'w'):
+            raise ValueError("Unsupported open mode '%s'" % mode)
+
+        local_s3_path = os.getenv('LOCAL_S3_MODE', None)
+        if not local_s3_path:
+            return super().open(mode)
+
+        modified_path = self.path.replace('s3://', '')
+        new_path = os.path.join(local_s3_path, modified_path)
+        if mode == 'w':
+            if self.compressed:
+                return BufferedWriter(FileIO(new_path, 'w'))
+            else:
+                # luigi files seem to be wrapped in a TextIOWrapper.
+                # if not wrapped, this causes errors in pandas csv writer
+                return TextIOWrapper(BufferedWriter(FileIO(new_path, 'w')))
+
+        else:
+            return BufferedReader(FileIO(new_path, 'r'))
 
 
 class DBTaskOutputTarget(luigi.Target):
@@ -83,7 +110,7 @@ class DBTaskOutputTarget(luigi.Target):
                 task_output.value = value
 
 
-class S3CSVTarget(S3Target):
+class S3CSVTarget(FireflowerS3Target):
     def __init__(self, path, compressed=True, kwargs_in=None, kwargs_out=None,
                  format=None):
 
