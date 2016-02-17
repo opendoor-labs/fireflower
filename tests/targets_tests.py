@@ -72,7 +72,7 @@ class TargetsTests(TestCase):
 
             def getenv(v, _):
                 # Is there a better way to assert arguments?
-                self.assertEqual(v, 'LOCAL_S3_MODE')
+                self.assertEqual(v, 'LOCAL_S3_PATH')
                 return d.path
 
             with mock.patch('fireflower.targets.os.getenv',
@@ -98,7 +98,7 @@ class TargetsTests(TestCase):
 
             def getenv(v, _):
                 # Is there a better way to assert arguments?
-                self.assertEqual(v, 'LOCAL_S3_MODE')
+                self.assertEqual(v, 'LOCAL_S3_PATH')
                 return d.path
 
             with mock.patch('fireflower.targets.os.getenv',

@@ -20,6 +20,10 @@ __all__ = [
 
 
 class FireflowerS3Target(S3Target):
+    """ Operates the same way as S3Target, except it looks for an environment variable
+    LOCAL_S3_PATH, which is a path on your local machine to store s3 files. If this is set,
+    the target will read / write to this path by stripping off s3:// and following the rest of the path
+    """
 
     fs = None
 
@@ -27,7 +31,7 @@ class FireflowerS3Target(S3Target):
         if mode not in ('r', 'w'):
             raise ValueError("Unsupported open mode '%s'" % mode)
 
-        local_s3_path = os.getenv('LOCAL_S3_MODE', None)
+        local_s3_path = os.getenv('LOCAL_S3_PATH', None)
         if not local_s3_path:
             return super().open(mode)
 
