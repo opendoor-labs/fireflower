@@ -133,6 +133,16 @@ class S3CSVTarget(FireflowerS3Target):
         self.kwargs_out = kwargs_out
         super(S3CSVTarget, self).__init__(path, format)
 
+    @contextmanager
+    def _open_writer(self):
+        with self.open('w') as f:
+            yield f
+
+    @contextmanager
+    def _open_reader(self):
+        with self.open('r') as f:
+            yield f
+
     @staticmethod
     def write_values(csv_writer, values, header=None):
         if header:
