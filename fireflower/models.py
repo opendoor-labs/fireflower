@@ -102,7 +102,7 @@ class TaskOutput(FireflowerDeclBase):
     __tablename__ = 'task_outputs'
 
     id = Column(Integer, primary_key=True)
-    task_id = Column(String(255), unique=True)
+    task_id = Column(Text(), unique=True)
     value = Column(JSONEncoded(), nullable=True)
     task_family = Column(String(255))  # from luigi.Task.task_family
     params = Column(JSONEncoded(), nullable=True)  # from luigi.Task.str_params
