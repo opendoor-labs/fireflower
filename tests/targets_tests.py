@@ -7,7 +7,7 @@ from moto import mock_s3
 
 from fireflower.targets import S3CSVTarget, FireflowerS3Target, S3TypedCSVTarget
 from nose_parameterized import parameterized
-from testfixtures import TempDirectory, tempdir
+from testfixtures import TempDirectory
 
 from fireflower.types import FeatureType
 
@@ -138,8 +138,7 @@ class TargetsTests(TestCase):
                     self.assertEqual("asdffdsa", expected_text)
 
     @mock_s3
-    @tempdir()
-    def test_s3_typed_compressed_csv_target(self, tempd):
+    def test_s3_typed_compressed_csv_target(self):
         conn = boto.connect_s3()
         bucket_name = 'some_bucket'
         file_name = 'some_file.csv.gz'
@@ -153,8 +152,7 @@ class TargetsTests(TestCase):
         self.assertDictEqual(df.to_dict(), read_result.to_dict())
 
     @mock_s3
-    @tempdir()
-    def test_s3_typed_uncompressed_csv_target(self, tempd):
+    def test_s3_typed_uncompressed_csv_target(self):
         conn = boto.connect_s3()
         bucket_name = 'some_bucket'
         file_name = 'some_file.csv'

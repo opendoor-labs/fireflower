@@ -133,16 +133,6 @@ class S3CSVTarget(FireflowerS3Target):
         self.kwargs_out = kwargs_out
         super(S3CSVTarget, self).__init__(path, format)
 
-    @contextmanager
-    def _open_writer(self):
-        with self.open('w') as f:
-            yield f
-
-    @contextmanager
-    def _open_reader(self):
-        with self.open('r') as f:
-            yield f
-
     @staticmethod
     def write_values(csv_writer, values, header=None):
         if header:
@@ -207,6 +197,7 @@ class S3CSVTarget(FireflowerS3Target):
                 return pd.read_csv(f, **kwargs)
 
 
+# TODO(nelson): refactor to reduce code duplication with S3CSVTarget
 class S3TypedCSVTarget(S3CSVTarget):
     def __init__(self, path, types, compressed=True,
                  kwargs_in=None, kwargs_out=None, format=None):
@@ -220,7 +211,7 @@ class S3TypedCSVTarget(S3CSVTarget):
     def write_typed_csv(self, df, **kwargs):
         if self.kwargs_out:
             kwargs = toolz.merge(self.kwargs_out, kwargs)
-        with self._open_writer() as f:
+        with self.open('w') as f:
             if self.compressed:
                 with TextIOWrapper(GzipFile(fileobj=f, mode='wb')) as g:
                     transformed = pd.DataFrame.from_items(
@@ -236,14 +227,14 @@ class S3TypedCSVTarget(S3CSVTarget):
     def read_typed_csv(self, **kwargs):
         if self.kwargs_in:
             kwargs = toolz.merge(self.kwargs_in, kwargs)
-        with self._open_reader() as f:
+        with self.open('r') as f:
             dtype = {colname: coltype.serialization_dtype
                      for colname, coltype in self.types.items()}
             if self.compressed:
-                df = pd.read_csv(filepath_or_buffer=f,
-                                 dtype=dtype,
-                                 compression='gzip',
-                                 **kwargs)
+                with TextIOWrapper(GzipFile(fileobj=f, mode='rb')) as g:
+                    df = pd.read_csv(filepath_or_buffer=g,
+                                     dtype=dtype,
+                                     **kwargs)
             else:
                 df = pd.read_csv(f, dtype=dtype, **kwargs)
 
