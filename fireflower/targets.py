@@ -195,3 +195,72 @@ class S3CSVTarget(FireflowerS3Target):
                     return pd.read_csv(g, **kwargs)
             else:
                 return pd.read_csv(f, **kwargs)
+
+
+# TODO(nelson): refactor to reduce code duplication with S3CSVTarget
+class S3TypedCSVTarget(S3CSVTarget):
+    def __init__(self, path, types, compressed=True,
+                 kwargs_in=None, kwargs_out=None, format=None):
+        self.types = types
+        if compressed:
+            format = luigi.format.Nop
+
+        super(S3TypedCSVTarget, self).__init__(path, compressed,
+                                               kwargs_in, kwargs_out, format)
+
+    def write_typed_csv(self, df, **kwargs):
+        if self.kwargs_out:
+            kwargs = toolz.merge(self.kwargs_out, kwargs)
+        with self.open('w') as f:
+            if self.compressed:
+                with TextIOWrapper(GzipFile(fileobj=f, mode='wb')) as g:
+                    transformed = pd.DataFrame.from_items(
+                            (colname,
+                                self.types[colname].output(col)
+                                if colname in self.types else col)
+                            for colname, col in df.items())
+
+                    transformed.to_csv(g, compression='gzip', **kwargs)
+            else:
+                df.to_csv(f, **kwargs)
+
+    def read_typed_csv(self, **kwargs):
+        if self.kwargs_in:
+            kwargs = toolz.merge(self.kwargs_in, kwargs)
+        with self.open('r') as f:
+            dtype = {colname: coltype.serialization_dtype
+                     for colname, coltype in self.types.items()}
+            if self.compressed:
+                with TextIOWrapper(GzipFile(fileobj=f, mode='rb')) as g:
+                    df = pd.read_csv(filepath_or_buffer=g,
+                                     dtype=dtype,
+                                     **kwargs)
+            else:
+                df = pd.read_csv(f, dtype=dtype, **kwargs)
+
+            return pd.DataFrame.from_items(
+                    (colname,
+                    self.types[colname].input(col) if colname in
+                                                      self.types else col)
+                    for colname, col in df.items())
+
+
+def read_typed_csv(input, types, *args, **kwargs):
+    inp = pd.read_csv(input,
+                      dtype={colname: coltype.serialization_dtype
+                             for colname, coltype in types.items()},
+                      *args,
+                      **kwargs)
+
+    return pd.DataFrame.from_items(
+        (colname,
+         types[colname].input(col) if colname in types else col)
+        for colname, col in inp.items())
+
+
+def write_typed_csv(output, df, types, *args, **kwargs):
+    transformed = pd.DataFrame.from_items(
+        (colname,
+         types[colname].output(col) if colname in types else col)
+        for colname, col in df.items())
+    transformed.to_csv(output, *args, **kwargs)

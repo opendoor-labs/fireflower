@@ -5,9 +5,11 @@ from unittest import TestCase, mock
 
 from moto import mock_s3
 
-from fireflower.targets import S3CSVTarget, FireflowerS3Target
+from fireflower.targets import S3CSVTarget, FireflowerS3Target, S3TypedCSVTarget
 from nose_parameterized import parameterized
 from testfixtures import TempDirectory
+
+from fireflower.types import FeatureType
 
 
 class TargetsTests(TestCase):
@@ -135,6 +137,30 @@ class TargetsTests(TestCase):
                     expected_text = fin.read()
                     self.assertEqual("asdffdsa", expected_text)
 
+    @mock_s3
+    def test_s3_typed_compressed_csv_target(self):
+        conn = boto.connect_s3()
+        bucket_name = 'some_bucket'
+        file_name = 'some_file.csv.gz'
+        dest_path = 's3://%s/%s' % (bucket_name, file_name)
+        conn.create_bucket(bucket_name)
+        df = pd.DataFrame(index=range(1), data={'a': [1]})
+        types = {'a': FeatureType.int}
+        s = S3TypedCSVTarget(dest_path, types, compressed=True)
+        s.write_csv(df, index=False)
+        read_result = s.read_csv()
+        self.assertDictEqual(df.to_dict(), read_result.to_dict())
 
-
-
+    @mock_s3
+    def test_s3_typed_uncompressed_csv_target(self):
+        conn = boto.connect_s3()
+        bucket_name = 'some_bucket'
+        file_name = 'some_file.csv'
+        dest_path = 's3://%s/%s' % (bucket_name, file_name)
+        conn.create_bucket(bucket_name)
+        df = pd.DataFrame(index=range(1), data={'a': [1]})
+        types = {'a': FeatureType.int}
+        s = S3TypedCSVTarget(dest_path, types, compressed=False)
+        s.write_csv(df, index=False)
+        read_result = s.read_csv()
+        self.assertDictEqual(df.to_dict(), read_result.to_dict())
