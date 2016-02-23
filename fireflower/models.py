@@ -120,3 +120,28 @@ class TaskOutput(FireflowerDeclBase):
             task_module,
             self.task_family,
             self.params)
+
+# This query joins tasks, task_events and task_parameters together, and
+# is meant to be used as a view for easy querying. Returns the luigi 
+# task ID string, and a JSON array of events.
+TaskHistoryView = """
+select task_id, array_to_json(array_agg(row_to_json((select q from (select hostname, event_name, event_timestamp) q))))
+    from (
+        select t.id,
+               t.name||'('||coalesce(params.params,'')||')' as task_id,
+               t.host as hostname,
+               task_events.event_name as event_name,
+               task_events.ts at time zone 'UTC' as event_timestamp 
+        from tasks t
+        left join (
+            -- the same task signature will appear in multiple rows as task,
+            -- so select out the task+params as a string to join by that
+            select task_id,
+                   string_agg(tp.name||'='||tp.value,', ') as params
+            from task_parameters tp
+            group by task_id) as params on params.task_id=t.id
+        left join task_events on task_events.task_id=t.id
+                         order by task_events.ts) as task_w_str_id
+    group by task_id
+    order by max(event_timestamp)
+"""
