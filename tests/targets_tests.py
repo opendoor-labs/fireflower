@@ -168,16 +168,26 @@ class TargetsTests(TestCase):
 
     @mock_s3
     def test_local_exists(self):
+        """
+            ensures that the existence of targets is calculated correctly.
+            s3 and local existence should not impact one another.
+        """
         with TempDirectory() as d:
+            # create a file on s3
             conn = boto.connect_s3()
             bucket_name = 'some_bucket'
             file_name = 'some_file.csv.gz'
             dest_path = 's3://%s/%s' % (bucket_name, file_name)
             conn.create_bucket(bucket_name)
             s = S3CSVTarget(dest_path, compressed=False)
+
+            # assert file does not exist on s3
+            self.assertFalse(s.exists())
+
             df = pd.DataFrame(index=range(1), data={'a': [1]})
             s.write_csv(df, index=False)
 
+            # assert that the file exists on s3
             self.assertTrue(s.exists())
 
             def getenv(v, _):
@@ -188,10 +198,13 @@ class TargetsTests(TestCase):
             with mock.patch('fireflower.targets.os.getenv',
                             side_effect=getenv):
                 # even though it exists on s3, check that it doesnt exist locally
-                t = S3CSVTarget(dest_path, compressed=False)
+                t = S3CSVTarget(dest_path, compressed=False, local_s3_path=d.path)
                 self.assertFalse(t.exists())
 
+                # create the file locally
                 os.mkdir(os.path.join(d.path, 'some_bucket'))
                 t.write_csv(df, index=False)
+
+                # assert that file exists locally
                 self.assertTrue(t.exists())
 

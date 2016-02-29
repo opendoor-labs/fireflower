@@ -53,21 +53,19 @@ class FireflowerS3Target(S3Target):
 
         is_compressed = getattr(self, 'compressed', False)
 
-        new_path = self.local_path
-
         if mode == 'w':
             if is_compressed:
                 # compressed files are rewrapped later
-                return BufferedWriter(FileIO(new_path, 'w'))
+                return BufferedWriter(FileIO(self.local_path, 'w'))
             else:
-                return TextIOWrapper(BufferedWriter(FileIO(new_path, 'w')))
+                return TextIOWrapper(BufferedWriter(FileIO(self.local_path, 'w')))
 
         else:
             if is_compressed:
                 # compressed files are rewrapped later
-                return BufferedReader(FileIO(new_path, 'r'))
+                return BufferedReader(FileIO(self.local_path, 'r'))
             else:
-                return TextIOWrapper(BufferedReader(FileIO(new_path, 'r')))
+                return TextIOWrapper(BufferedReader(FileIO(self.local_path, 'r')))
 
 
 class DBTaskOutputTarget(luigi.Target):
