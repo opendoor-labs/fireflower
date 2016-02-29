@@ -1,4 +1,5 @@
 import boto
+import os
 import pandas as pd
 
 from unittest import TestCase, mock
@@ -164,3 +165,46 @@ class TargetsTests(TestCase):
         s.write_csv(df, index=False)
         read_result = s.read_csv()
         self.assertDictEqual(df.to_dict(), read_result.to_dict())
+
+    @mock_s3
+    def test_local_exists(self):
+        """
+            ensures that the existence of targets is calculated correctly.
+            s3 and local existence should not impact one another.
+        """
+        with TempDirectory() as d:
+            # create a file on s3
+            conn = boto.connect_s3()
+            bucket_name = 'some_bucket'
+            file_name = 'some_file.csv.gz'
+            dest_path = 's3://%s/%s' % (bucket_name, file_name)
+            conn.create_bucket(bucket_name)
+            df = pd.DataFrame(index=range(1), data={'a': [1]})
+            s = S3CSVTarget(dest_path, compressed=False)
+
+            # assert file does not exist on s3
+            self.assertFalse(s.exists())
+
+            s.write_csv(df, index=False)
+
+            # assert that the file exists on s3
+            self.assertTrue(s.exists())
+
+            def getenv(v, _):
+                # Is there a better way to assert arguments?
+                self.assertEqual(v, 'LOCAL_S3_PATH')
+                return d.path
+
+            with mock.patch('fireflower.targets.os.getenv',
+                            side_effect=getenv):
+                # even though it exists on s3, check that it doesnt exist locally
+                t = S3CSVTarget(dest_path, compressed=False)
+                self.assertFalse(t.exists())
+
+                # create the file locally
+                os.mkdir(os.path.join(d.path, 'some_bucket'))
+                t.write_csv(df, index=False)
+
+                # assert that file exists locally
+                self.assertTrue(t.exists())
+
