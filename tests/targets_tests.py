@@ -195,6 +195,3 @@ class TargetsTests(TestCase):
                 t.write_csv(df, index=False)
                 self.assertTrue(t.exists())
 
-
-
-
