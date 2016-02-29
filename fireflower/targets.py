@@ -30,6 +30,7 @@ class FireflowerS3Target(S3Target):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # TODO: consider making class variable (need to test properly)
         self.local_s3_path = os.getenv('LOCAL_S3_PATH', None)
 
     @property
