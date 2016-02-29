@@ -179,12 +179,12 @@ class TargetsTests(TestCase):
             file_name = 'some_file.csv.gz'
             dest_path = 's3://%s/%s' % (bucket_name, file_name)
             conn.create_bucket(bucket_name)
+            df = pd.DataFrame(index=range(1), data={'a': [1]})
             s = S3CSVTarget(dest_path, compressed=False)
 
             # assert file does not exist on s3
             self.assertFalse(s.exists())
 
-            df = pd.DataFrame(index=range(1), data={'a': [1]})
             s.write_csv(df, index=False)
 
             # assert that the file exists on s3
@@ -198,7 +198,7 @@ class TargetsTests(TestCase):
             with mock.patch('fireflower.targets.os.getenv',
                             side_effect=getenv):
                 # even though it exists on s3, check that it doesnt exist locally
-                t = S3CSVTarget(dest_path, compressed=False, local_s3_path=d.path)
+                t = S3CSVTarget(dest_path, compressed=False)
                 self.assertFalse(t.exists())
 
                 # create the file locally
