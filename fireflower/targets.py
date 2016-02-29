@@ -28,18 +28,32 @@ class FireflowerS3Target(S3Target):
 
     fs = None
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.local_s3_path = os.getenv('LOCAL_S3_PATH', None)
+
+    @property
+    def local_path(self):
+        assert self.local_s3_path
+        modified_path = self.path.replace('s3://', '')
+        return os.path.join(self.local_s3_path, modified_path)
+
+    def exists(self):
+        if self.local_s3_path:
+            return os.path.isfile(self.local_path)
+        else:
+            return super().exists()
+
     def open(self, mode='r'):
         if mode not in ('r', 'w'):
             raise ValueError("Unsupported open mode '%s'" % mode)
 
-        local_s3_path = os.getenv('LOCAL_S3_PATH', None)
-        if not local_s3_path:
+        if not self.local_s3_path:
             return super().open(mode)
 
-        modified_path = self.path.replace('s3://', '')
-        new_path = os.path.join(local_s3_path, modified_path)
-
         is_compressed = getattr(self, 'compressed', False)
+
+        new_path = self.local_path
 
         if mode == 'w':
             if is_compressed:
