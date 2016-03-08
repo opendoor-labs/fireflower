@@ -18,14 +18,6 @@ __all__ = [
     'S3CSVTarget'
 ]
 
-def coroutine(f):
-    def wrapper(*args, **kw):
-        c = f(*args, **kw)
-        c.send(None)    # This is the same as calling ``next()``,
-                        # but works in Python 2.x and 3.x
-        return c
-    return wrapper
-
 class FireflowerS3Target(S3Target):
     """ Operates the same way as S3Target, except it looks for an environment variable
     LOCAL_S3_PATH, which is a path on your local machine to store s3 files. If this is set,

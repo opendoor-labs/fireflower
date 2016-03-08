@@ -78,7 +78,7 @@ class TargetsTests(TestCase):
             f.write_tuple(('a','b'))
             f.write_tuple((3,4))
 
-        read_result = target.read_csv(engine='python')
+        read_result = target.read_csv()
         self.assertDictEqual({'a':3, 'b':4}, read_result.iloc[0].to_dict())
 
     @parameterized.expand([
