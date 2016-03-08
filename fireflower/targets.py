@@ -141,6 +141,26 @@ class DBTaskOutputTarget(luigi.Target):
                 task_output.value = value
 
 
+class CSVStream:
+    def __init__(self, csv_writer, *closeables):
+        self.closeables = closeables
+        self.csv_writer = csv_writer
+
+    def write_tuple(self, tpl):
+        self.csv_writer.writerow(tpl)
+
+    def write_tuples(self, tpls):
+        for v in tpls:
+            self.csv_writer.writerow(v)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        for file in self.closeables:
+            file.close()
+
+
 class S3CSVTarget(FireflowerS3Target):
     def __init__(self, path, compressed=True, kwargs_in=None, kwargs_out=None,
                  format=None):
@@ -160,27 +180,18 @@ class S3CSVTarget(FireflowerS3Target):
         for v in values:
             csv_writer.writerow(v)
 
-    @coroutine
-    def append_csv_tuples(self, header_tuple=None):
-        """Stream tuples to s3 as a csv but allow appending
-           tuples --  iterable of n-tuples
-           header_tuple -- n-tuple that indicates fields for csv
+    def open_csv_stream(self):
+        """ Returns a CSVStream object (a context manager) for streaming tuples
+            to the CSV.
         """
-        try:
-            f = self.open('w')
-            if self.compressed:
-                with TextIOWrapper(GzipFile(fileobj=f, mode='wb')) as g:
-                    csv_writer = csv.writer(g)
-                    while True:
-                        tuples = yield
-                        self.write_values(csv_writer, tuples, header_tuple)
-            else:
-                csv_writer = csv.writer(f)
-                while True:
-                    tuples = yield
-                    self.write_values(csv_writer, tuples, header_tuple)
-        except GeneratorExit:
-            f.close()
+        f = self.open('w')
+        if self.compressed:
+            iostream = TextIOWrapper(GzipFile(fileobj=f, mode='wb'))
+            csv_writer = csv.writer(iostream)
+            return CSVStream(csv_writer, iostream, f)
+        else:
+            csv_writer = csv.writer(f)
+            return CSVStream(csv_writer, f)
 
     def write_csv_tuples(self, tuples, header_tuple=None):
         """Stream tuples to s3 as a csv
