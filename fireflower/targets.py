@@ -18,6 +18,13 @@ __all__ = [
     'S3CSVTarget'
 ]
 
+def coroutine(f):
+    def wrapper(*args, **kw):
+        c = f(*args, **kw)
+        c.send(None)    # This is the same as calling ``next()``,
+                        # but works in Python 2.x and 3.x
+        return c
+    return wrapper
 
 class FireflowerS3Target(S3Target):
     """ Operates the same way as S3Target, except it looks for an environment variable
@@ -152,6 +159,28 @@ class S3CSVTarget(FireflowerS3Target):
             csv_writer.writerow(header)
         for v in values:
             csv_writer.writerow(v)
+
+    @coroutine
+    def append_csv_tuples(self, header_tuple=None):
+        """Stream tuples to s3 as a csv but allow appending
+           tuples --  iterable of n-tuples
+           header_tuple -- n-tuple that indicates fields for csv
+        """
+        try:
+            f = self.open('w')
+            if self.compressed:
+                with TextIOWrapper(GzipFile(fileobj=f, mode='wb')) as g:
+                    csv_writer = csv.writer(g)
+                    while True:
+                        tuples = yield
+                        self.write_values(csv_writer, tuples, header_tuple)
+            else:
+                csv_writer = csv.writer(f)
+                while True:
+                    tuples = yield
+                    self.write_values(csv_writer, tuples, header_tuple)
+        except GeneratorExit:
+            f.close()
 
     def write_csv_tuples(self, tuples, header_tuple=None):
         """Stream tuples to s3 as a csv
