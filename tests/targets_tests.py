@@ -65,6 +65,23 @@ class TargetsTests(TestCase):
         self.assertDictEqual(df.to_dict(), read_result.to_dict())
 
     @parameterized.expand([
+        (True,),
+        (False,),
+    ])
+    @mock_s3
+    def test_csv_stream(self, compressed):
+        conn = boto.connect_s3()
+        conn.create_bucket('some_bucket')
+
+        target = S3CSVTarget('s3://some_bucket/some_file.csv.gz', compressed=compressed)
+        with target.open_csv_stream() as f:
+            f.write_tuple(('a','b'))
+            f.write_tuple((3,4))
+
+        read_result = target.read_csv()
+        self.assertDictEqual({'a':3, 'b':4}, read_result.iloc[0].to_dict())
+
+    @parameterized.expand([
         (True, True),
         (False, True),
         (True, False),
