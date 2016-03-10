@@ -152,6 +152,20 @@ class CSVStream:
         for file in self.closeables:
             file.close()
 
+class CSVInStream:
+    def __init__(self, csv_reader, *closeables):
+        self.closeables = closeables
+        self.csv_reader = csv_reader
+
+    def __iter__(self):
+        return self.csv_reader
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        for file in self.closeables:
+            file.close()
 
 class S3CSVTarget(FireflowerS3Target):
     def __init__(self, path, compressed=True, kwargs_in=None, kwargs_out=None,
@@ -230,19 +244,19 @@ class S3CSVTarget(FireflowerS3Target):
                 for chunk in pd.read_csv(f, **kwargs):
                     yield chunk
 
+    def open_csv_dict_stream(self, **kwargs):
+        f = self.open('r')
+        if self.compressed:
+            g = TextIOWrapper(GzipFile(fileobj=f, mode='rb'))
+            csv_reader = csv.DictReader(g)
+            return CSVInStream(csv_reader, f, g)
+        else:
+            csv_reader = csv.DictReader(f)
+            return CSVInStream(csv_reader, f)
+
     def read_csv_dict_stream(self, **kwargs):
-        """Use csv.DictReader to stream csv as dictionaries
-        """
-        with self.open('r') as f:
-            if self.compressed:
-                with TextIOWrapper(GzipFile(fileobj=f, mode='rb')) as g:
-                    csv_reader = csv.DictReader(g)
-                    for row in csv_reader:
-                        yield row
-            else:
-                csv_reader = csv.DictReader(f)
-                for row in csv_reader:
-                    yield row
+        with self.open_csv_dict_stream(**kwargs) as stream:
+            yield from stream
 
     def read_csv(self, **kwargs):
         if self.kwargs_in:
