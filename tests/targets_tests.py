@@ -82,12 +82,14 @@ class TargetsTests(TestCase):
         self.assertDictEqual({'a':3, 'b':4}, read_result.iloc[0].to_dict())
 
     @parameterized.expand([
-        (True, True),
-        (False, True),
-        (True, False),
-        (False, False)
+        (True, 'df_stream'),
+        (False, 'df_stream'),
+        (True, 'df_slurp'),
+        (False, 'df_slurp'),
+        (True, 'dict_stream'),
+        (False, 'dict_stream')
     ])
-    def test_local_csv(self, compressed, stream):
+    def test_local_csv(self, compressed, read_method):
         with TempDirectory() as d:
 
             def getenv(v, _):
@@ -98,14 +100,19 @@ class TargetsTests(TestCase):
             with mock.patch('fireflower.targets.os.getenv',
                             side_effect=getenv):
                 s = S3CSVTarget('s3://test.csv.gz', compressed=compressed)
-                df = pd.DataFrame(index=range(1), data={'a': [1]})
-                s.write_csv(df, index=False)
-                if stream:
+                exp_df = pd.DataFrame(index=range(1), data={'a': [1]})
+                exp_dict_stream = [{'a': '1'}]
+                s.write_csv(exp_df, index=False)
+                if read_method == 'df_stream':
                     combined_result = s.read_csv_stream(chunksize=5)
                     read_result = pd.concat(combined_result)
-                else:
+                    self.assertDictEqual(exp_df.to_dict(), read_result.to_dict())
+                elif read_method == 'df_slurp':
                     read_result = s.read_csv()
-                self.assertDictEqual(df.to_dict(), read_result.to_dict())
+                    self.assertDictEqual(exp_df.to_dict(), read_result.to_dict())
+                elif read_method == 'dict_stream':
+                    read_result = list(s.read_csv_dict_stream())
+                    self.assertListEqual(read_result, exp_dict_stream)
 
     @parameterized.expand([
         (True, True),
