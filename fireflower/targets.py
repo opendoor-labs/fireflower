@@ -230,6 +230,20 @@ class S3CSVTarget(FireflowerS3Target):
                 for chunk in pd.read_csv(f, **kwargs):
                     yield chunk
 
+    def read_csv_dict_stream(self, **kwargs):
+        """Use csv.DictReader to stream csv as dictionaries
+        """
+        with self.open('r') as f:
+            if self.compressed:
+                with TextIOWrapper(GzipFile(fileobj=f, mode='rb')) as g:
+                    csv_reader = csv.DictReader(g)
+                    for row in csv_reader:
+                        yield row
+            else:
+                csv_reader = csv.DictReader(f)
+                for row in csv_reader:
+                    yield row
+
     def read_csv(self, **kwargs):
         if self.kwargs_in:
             kwargs = toolz.merge(self.kwargs_in, kwargs)
