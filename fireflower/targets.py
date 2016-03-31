@@ -169,7 +169,7 @@ class CSVInStream:
 
 class S3CSVTarget(FireflowerS3Target):
     def __init__(self, path, compressed=True, kwargs_in=None, kwargs_out=None,
-                 format=None):
+                 format=None, client=None):
 
         if compressed:
             format = luigi.format.Nop
@@ -177,7 +177,7 @@ class S3CSVTarget(FireflowerS3Target):
         self.compressed = compressed
         self.kwargs_in = kwargs_in
         self.kwargs_out = kwargs_out
-        super(S3CSVTarget, self).__init__(path, format)
+        super(S3CSVTarget, self).__init__(path, format, client)
 
     @staticmethod
     def write_values(csv_writer, values, header=None):
@@ -273,13 +273,13 @@ class S3CSVTarget(FireflowerS3Target):
 # TODO(nelson): refactor to reduce code duplication with S3CSVTarget
 class S3TypedCSVTarget(S3CSVTarget):
     def __init__(self, path, types, compressed=True,
-                 kwargs_in=None, kwargs_out=None, format=None):
+                 kwargs_in=None, kwargs_out=None, format=None, client=None):
         self.types = types
         if compressed:
             format = luigi.format.Nop
 
         super(S3TypedCSVTarget, self).__init__(path, compressed,
-                                               kwargs_in, kwargs_out, format)
+                                               kwargs_in, kwargs_out, format, client)
 
     def write_typed_csv(self, df, **kwargs):
         if self.kwargs_out:
