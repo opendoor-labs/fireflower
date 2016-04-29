@@ -125,7 +125,7 @@ class TaskOutput(FireflowerDeclBase):
 # is meant to be used as a view for easy querying. Returns the luigi 
 # task ID string, and a JSON array of events.
 TaskHistoryView = """
-select task_id, array_to_json(array_agg(row_to_json((select q from (select hostname, event_name, event_timestamp) q))))
+select task_id, array_to_json(array_agg(row_to_json((select q from (select hostname, event_name, event_timestamp) q)))) as events
     from (
         select t.id,
                t.name||'('||coalesce(params.params,'')||')' as task_id,
