@@ -1,6 +1,9 @@
 from functools import wraps
 from shutil import copyfileobj
 import sys
+import structlog
+import contextlib
+import uuid
 
 from luigi.interface import _WorkerSchedulerFactory
 from luigi.rpc import RemoteScheduler
@@ -13,6 +16,8 @@ __all__ = [
     'FireflowerCentralPlannerScheduler',
 ]
 
+logger = structlog.get_logger()
+
 
 class FireflowerStateManager(object):
     """
@@ -21,6 +26,7 @@ class FireflowerStateManager(object):
     for example.
     """
     session = None
+    structlog_threadlocal = False
     sentry = None
 
     @classmethod
@@ -31,15 +37,41 @@ class FireflowerStateManager(object):
     def register_sentry(cls, sentry):
         cls.sentry = sentry
 
+    @classmethod
+    def register_structlog_threadlocal(cls):
+        """ call if you've configured structlog for threadlocal storage;
+            fireflower will stick task info in structlog """
+        cls.structlog_threadlocal = True
 
-def luigi_run_with_sentry(func):
+    @classmethod
+    @contextlib.contextmanager
+    def bind_structlog(cls, **kwargs):
+        if cls.structlog_threadlocal:
+            with structlog.threadlocal.tmp_bind(logger, **kwargs):
+                yield
+        else:
+            yield
+
+
+def luigi_run_wrapper(func):
+    if (FireflowerStateManager.sentry.client is None and
+            not FireflowerStateManager.structlog_threadlocal):
+        # no wrapping necessary
+        return func
+
     @wraps(func)
     def wrapper(self, *args, **kwargs):
+        task_uuid = str(uuid.uuid4())
         try:
-            return func(self, *args, **kwargs)
+            with FireflowerStateManager.bind_structlog(
+                    uuid=task_uuid,
+                    task_family=self.task_family):
+                return func(self, *args, **kwargs)
         except Exception:
             if FireflowerStateManager.sentry.client:
                 extra = {
+                    'task_uuid': task_uuid,
+                    'task_family': self.task_family,
                     'task_args': self.param_args,
                     'task_kwargs': self.param_kwargs,
                 }

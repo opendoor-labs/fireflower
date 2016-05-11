@@ -5,7 +5,7 @@ import luigi
 from luigi.task_register import Register
 
 from fireflower.core import FireflowerStateManager, \
-    luigi_run_with_sentry
+    luigi_run_wrapper
 from fireflower.parameters import SignatureParameter
 from fireflower.targets import DBTaskOutputTarget
 from fireflower.utils import to_date, to_datetime, deep_sorted
@@ -19,21 +19,19 @@ __all__ = [
 ]
 
 
-class SentryLuigiMeta(Register):
+class FireflowerLuigiMeta(Register):
     """
-    Metaclass to ensure that exceptions raised by the run method get captured
-    by Sentry.
+    Metaclass to wrap the LuigiTask.run method, for sentry & logging.
     """
     def __call__(cls, *args, **kwargs):
-        if not cls._is_run_method_wrapped_by_sentry \
-                and FireflowerStateManager.sentry:
-            cls.run = luigi_run_with_sentry(cls.run)
-            cls._is_run_method_wrapped_by_sentry = True
-        return super(SentryLuigiMeta, cls).__call__(*args, **kwargs)
+        if not cls._is_run_method_wrapped_by_fireflower:
+            cls.run = luigi_run_wrapper(cls.run)
+            cls._is_run_method_wrapped_by_fireflower = True
+        return super(FireflowerLuigiMeta, cls).__call__(*args, **kwargs)
 
 
-class FireflowerTask(luigi.Task, metaclass=SentryLuigiMeta):
-    _is_run_method_wrapped_by_sentry = False
+class FireflowerTask(luigi.Task, metaclass=FireflowerLuigiMeta):
+    _is_run_method_wrapped_by_fireflower = False
 
 
 class FireflowerOutputTask(FireflowerTask):
