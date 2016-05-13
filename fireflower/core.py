@@ -54,8 +54,8 @@ class FireflowerStateManager(object):
 
 
 def luigi_run_wrapper(func):
-    if (FireflowerStateManager.sentry.client is None and
-            not FireflowerStateManager.structlog_threadlocal):
+    if (FireflowerStateManager.sentry is None
+            and not FireflowerStateManager.structlog_threadlocal):
         # no wrapping necessary
         return func
 
@@ -68,7 +68,8 @@ def luigi_run_wrapper(func):
                     task_family=self.task_family):
                 return func(self, *args, **kwargs)
         except Exception:
-            if FireflowerStateManager.sentry.client:
+            if (FireflowerStateManager.sentry and
+                    FireflowerStateManager.sentry.client):
                 extra = {
                     'task_uuid': task_uuid,
                     'task_family': self.task_family,
@@ -78,7 +79,9 @@ def luigi_run_wrapper(func):
                 FireflowerStateManager.sentry.captureException(extra=extra)
             raise
         finally:
-            FireflowerStateManager.sentry.client.context.clear()
+            if (FireflowerStateManager.sentry and
+                    FireflowerStateManager.sentry.client):
+                FireflowerStateManager.sentry.client.context.clear()
     return wrapper
 
 
