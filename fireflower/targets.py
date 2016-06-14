@@ -18,6 +18,7 @@ __all__ = [
     'S3CSVTarget'
 ]
 
+
 class FireflowerS3Target(S3Target):
     """ Operates the same way as S3Target, except it looks for an environment variable
     LOCAL_S3_PATH, which is a path on your local machine to store s3 files. If this is set,
@@ -70,6 +71,7 @@ class FireflowerS3Target(S3Target):
 
 class DBTaskOutputTarget(luigi.Target):
     """ Target class which writes a row to signals.task_outputs """
+
     @classmethod
     def create(cls, task):
         return cls(task_id=task.task_id,
@@ -152,6 +154,7 @@ class CSVStream:
         for file in self.closeables:
             file.close()
 
+
 class CSVInStream:
     def __init__(self, csv_reader, *closeables):
         self.closeables = closeables
@@ -166,6 +169,7 @@ class CSVInStream:
     def __exit__(self, type, value, traceback):
         for file in self.closeables:
             file.close()
+
 
 class S3CSVTarget(FireflowerS3Target):
     def __init__(self, path, compressed=True, kwargs_in=None, kwargs_out=None,
@@ -218,7 +222,8 @@ class S3CSVTarget(FireflowerS3Target):
             kwargs = toolz.merge(self.kwargs_out, kwargs)
         with self.open('w') as f:
             if self.compressed:
-                with TextIOWrapper(GzipFile(fileobj=f, mode='wb')) as g:
+                encoding = kwargs.get('encoding', 'utf-8')
+                with TextIOWrapper(GzipFile(fileobj=f, mode='wb'), encoding=encoding) as g:
                     df.to_csv(g, **kwargs)
             else:
                 df.to_csv(f, **kwargs)
@@ -337,3 +342,4 @@ def write_typed_csv(output, df, types, *args, **kwargs):
          types[colname].output(col) if colname in types else col)
         for colname, col in df.items())
     transformed.to_csv(output, *args, **kwargs)
+
