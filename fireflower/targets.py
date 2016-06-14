@@ -342,4 +342,3 @@ def write_typed_csv(output, df, types, *args, **kwargs):
          types[colname].output(col) if colname in types else col)
         for colname, col in df.items())
     transformed.to_csv(output, *args, **kwargs)
-
