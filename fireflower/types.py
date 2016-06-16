@@ -100,6 +100,12 @@ class BooleanFeature(FeatureType):
     def serialization_dtype(self):
         return np.bool
 
+    def output(self, series):
+        '''Handles output of series with null value properly, e.g.
+        instead of outputing [True,False, np.nan] as "1.0,0.0,"
+        it should output "True,False,"'''
+        return series.astype(object).replace({1: True, 0: False})
+
     def input(self, series):
         return series.astype(object)
 FeatureType.bool = BooleanFeature()

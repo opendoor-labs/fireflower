@@ -41,6 +41,8 @@ class FeatureTypesTests(TestCase):
         self.assertEqual(df.a.iloc[2], False)
         self.assertEqual(df.dtypes['a'], np.dtype(object))
 
+        df['a'] = df.a.astype(float)  # check bool type with null
+
         out = StringIO()
         write_typed_csv(out, df, {'a': FeatureType.bool}, index=False)
         self.assertEqual(out.getvalue(), "a,b\nTrue,\n,\nFalse,\n")
