@@ -33,8 +33,9 @@ class FeatureTypesTests(TestCase):
         self.assertEqual(out.getvalue(), 'a,b\n1,\n,\n')
 
     def test_bool_category_feature(self):
-        inp = StringIO("a,b\ntrue,\n,\nfalse,\n")
-        df = read_typed_csv(inp, {'a': FeatureType.bool})
+        inp = StringIO("a,b,c\ntrue,,true\n,,false\nfalse,,true\n")
+        df = read_typed_csv(inp, {'a': FeatureType.bool,
+                                  'c': FeatureType.bool})
 
         self.assertEqual(df.a.iloc[0], True)
         self.assertTrue(np.isnan(df.a.iloc[1]))
@@ -42,7 +43,9 @@ class FeatureTypesTests(TestCase):
         self.assertEqual(df.dtypes['a'], np.dtype(object))
 
         df['a'] = df.a.astype(float)  # check bool type with null
+        df['c'] = df.c.astype(bool)   # check bool col w/o null
 
         out = StringIO()
-        write_typed_csv(out, df, {'a': FeatureType.bool}, index=False)
-        self.assertEqual(out.getvalue(), "a,b\nTrue,\n,\nFalse,\n")
+        write_typed_csv(out, df, {'a': FeatureType.bool,
+                                  'c': FeatureType.bool}, index=False)
+        self.assertEqual(out.getvalue(), "a,b,c\nTrue,,True\n,,False\nFalse,,True\n")
