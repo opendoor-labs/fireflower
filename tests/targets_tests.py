@@ -169,11 +169,33 @@ class TargetsTests(TestCase):
         file_name = 'some_file.csv.gz'
         dest_path = 's3://%s/%s' % (bucket_name, file_name)
         conn.create_bucket(bucket_name)
-        df = pd.DataFrame(index=range(1), data={'a': [1]})
-        types = {'a': FeatureType.int}
+        df = pd.DataFrame(index=range(2), data={'a': [1, 2],
+                                                'b': [True, pd.np.nan]})
+
+        types = {'a': FeatureType.int, 'b': FeatureType.bool}
         s = S3TypedCSVTarget(dest_path, types, compressed=True)
-        s.write_csv(df, index=False)
-        read_result = s.read_csv()
+        s.write_typed_csv(df, index=False)
+        read_result = s.read_typed_csv()
+        self.assertDictEqual(df.to_dict(), read_result.to_dict())
+
+    @mock_s3
+    def test_s3_typed_compressed_csv_target_bool_with_null(self):
+        conn = boto.connect_s3()
+        bucket_name = 'some_bucket'
+        file_name = 'some_file.csv.gz'
+        dest_path = 's3://%s/%s' % (bucket_name, file_name)
+        conn.create_bucket(bucket_name)
+        df = pd.DataFrame(index=range(3), data={'a': [1, 2, 3],
+                                                'b': [1.0, pd.np.nan, 0.0]})
+
+        types = {'a': FeatureType.int, 'b': FeatureType.bool}
+        s = S3TypedCSVTarget(dest_path, types, compressed=True)
+        s.write_typed_csv(df, index=False)
+        read_result = s.read_typed_csv()
+
+        # input should be read back as object
+        df['b'] = [True, pd.np.nan, False]
+
         self.assertDictEqual(df.to_dict(), read_result.to_dict())
 
     @mock_s3
@@ -183,11 +205,32 @@ class TargetsTests(TestCase):
         file_name = 'some_file.csv'
         dest_path = 's3://%s/%s' % (bucket_name, file_name)
         conn.create_bucket(bucket_name)
-        df = pd.DataFrame(index=range(1), data={'a': [1]})
-        types = {'a': FeatureType.int}
+        df = pd.DataFrame(index=range(2), data={'a': [1, 2],
+                                                'b': [True, pd.np.nan]})
+        types = {'a': FeatureType.int, 'b': FeatureType.bool}
         s = S3TypedCSVTarget(dest_path, types, compressed=False)
-        s.write_csv(df, index=False)
-        read_result = s.read_csv()
+        s.write_typed_csv(df, index=False)
+        read_result = s.read_typed_csv()
+        self.assertDictEqual(df.to_dict(), read_result.to_dict())
+
+    @mock_s3
+    def test_s3_typed_uncompressed_csv_target_bool_with_null(self):
+        conn = boto.connect_s3()
+        bucket_name = 'some_bucket'
+        file_name = 'some_file.csv.gz'
+        dest_path = 's3://%s/%s' % (bucket_name, file_name)
+        conn.create_bucket(bucket_name)
+        df = pd.DataFrame(index=range(3), data={'a': [1, 2, 3],
+                                                'b': [1.0, pd.np.nan, 0.0]})
+
+        types = {'a': FeatureType.int, 'b': FeatureType.bool}
+        s = S3TypedCSVTarget(dest_path, types, compressed=False)
+        s.write_typed_csv(df, index=False)
+        read_result = s.read_typed_csv()
+
+        # input should be read back as object
+        df['b'] = [True, pd.np.nan, False]
+
         self.assertDictEqual(df.to_dict(), read_result.to_dict())
 
     @mock_s3

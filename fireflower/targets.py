@@ -290,17 +290,17 @@ class S3TypedCSVTarget(S3CSVTarget):
         if self.kwargs_out:
             kwargs = toolz.merge(self.kwargs_out, kwargs)
         with self.open('w') as f:
+            transformed = pd.DataFrame.from_items(
+               (colname,
+                   self.types[colname].output(col)
+                   if colname in self.types else col)
+               for colname, col in df.items())
+
             if self.compressed:
                 with TextIOWrapper(GzipFile(fileobj=f, mode='wb')) as g:
-                    transformed = pd.DataFrame.from_items(
-                            (colname,
-                                self.types[colname].output(col)
-                                if colname in self.types else col)
-                            for colname, col in df.items())
-
                     transformed.to_csv(g, compression='gzip', **kwargs)
             else:
-                df.to_csv(f, **kwargs)
+                transformed.to_csv(f, **kwargs)
 
     def read_typed_csv(self, **kwargs):
         if self.kwargs_in:

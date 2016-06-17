@@ -104,7 +104,15 @@ class BooleanFeature(FeatureType):
         '''Handles output of series with null value properly, e.g.
         instead of outputing [True,False, np.nan] as "1.0,0.0,"
         it should output "True,False,"'''
-        return series.astype(object).replace({1: True, 0: False})
+
+        if series.dtype == 'object':
+            return series
+        elif series.dtype == 'float':
+            # convert Series of 1.0, 0.0, and nan to True, False, nan
+            series = series.copy().astype(object)
+            series[series == 1.0] = True
+            series[series == 0.0] = False
+            return series
 
     def input(self, series):
         return series.astype(object)
