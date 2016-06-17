@@ -105,13 +105,13 @@ class BooleanFeature(FeatureType):
         instead of outputing [True,False, np.nan] as "1.0,0.0,"
         it should output "True,False,"'''
 
-        if series.dtype == 'object':
-            return series
-        elif series.dtype == 'float':
-            # convert Series of 1.0, 0.0, and nan to True, False, nan
+        if series.dtype == np.dtype(float):
+            # convert Series of (1.0, 0.0, and nan) to (True, False, nan)
             series = series.copy().astype(object)
             series[series == 1.0] = True
             series[series == 0.0] = False
+            return series
+        else:
             return series
 
     def input(self, series):
