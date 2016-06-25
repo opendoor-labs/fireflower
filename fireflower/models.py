@@ -78,6 +78,7 @@ class TaskRecord(FireflowerDeclBase):
     id = Column(Integer, primary_key=True)
     name = Column(String(128), index=True)
     host = Column(String(128))
+    task_id = Column(String(200), index=True)
     parameters = orm.relationship(
         'TaskParameter',
         collection_class=orm.collections.attribute_mapped_collection('name'),
