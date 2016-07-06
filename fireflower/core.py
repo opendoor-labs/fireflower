@@ -66,6 +66,8 @@ def luigi_run_wrapper(func):
             with FireflowerStateManager.bind_structlog(
                     uuid=task_uuid,
                     task_family=self.task_family):
+                if 'tracking_url_callback' in kwargs:
+                    del kwargs['tracking_url_callback']
                 return func(self, *args, **kwargs)
         except Exception:
             if (FireflowerStateManager.sentry and
