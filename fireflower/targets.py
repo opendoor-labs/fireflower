@@ -88,9 +88,9 @@ class DBTaskOutputTarget(luigi.Target):
     def _session(self):
         try:
             yield self._db_session
-        except Exception:
+        except Exception as e:
             self._db_session.rollback()
-            raise
+            raise e
         else:
             self._db_session.commit()
 
