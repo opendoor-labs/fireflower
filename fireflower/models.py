@@ -110,11 +110,13 @@ class TaskOutput(FireflowerDeclBase):
     param_dict = Column(JSONB, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
-    def __init__(self, task_id, value, task_family, params):
+    def __init__(self, task_id, value, task_family, params, param_dict):
+
         self.task_id = task_id
         self.value = value
         self.task_family = task_family
         self.params = params
+        self.param_dict = param_dict
 
     def make_task(self, task_module : str) -> luigi.Task:
         """ Reifies the luigi.Task object from its name and saved parameters """
