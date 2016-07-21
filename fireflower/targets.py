@@ -106,7 +106,8 @@ class DBTaskOutputTarget(luigi.Target):
             task_output = TaskOutput(task_id=self._task_id,
                                      value=value,
                                      task_family=self._task_family,
-                                     params=self._params)
+                                     params=self._params,
+                                     param_dict=self._params)
             task_session.add(task_output)
 
     def read(self):

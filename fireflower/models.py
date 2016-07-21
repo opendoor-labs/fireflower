@@ -5,6 +5,7 @@ from luigi.db_task_history import DbTaskHistory, Base
 from luigi.task_register import load_task
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, TIMESTAMP, \
     desc, DateTime, orm
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.declarative import declarative_base
 
 from fireflower.core import FireflowerStateManager
@@ -106,6 +107,7 @@ class TaskOutput(FireflowerDeclBase):
     value = Column(JSONEncoded(), nullable=True)
     task_family = Column(String(255))  # from luigi.Task.task_family
     params = Column(JSONEncoded(), nullable=True)  # from luigi.Task.str_params
+    param_dict = Column(JSONB, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
     def __init__(self, task_id, value, task_family, params):
