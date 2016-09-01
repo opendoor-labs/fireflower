@@ -5,18 +5,22 @@ from io import TextIOWrapper, BufferedWriter, FileIO, BufferedReader
 from gzip import GzipFile
 
 import luigi
+import structlog
 from luigi.s3 import S3Target
 import pandas as pd
 import toolz
 
 from fireflower.core import FireflowerStateManager
 from fireflower.models import TaskOutput
+from fireflower.profiler import profile_method
 
 __all__ = [
     'DBTaskOutputTarget',
     'S3Target',
     'S3CSVTarget'
 ]
+
+logger = structlog.get_logger(__name__)
 
 
 class FireflowerS3Target(S3Target):
@@ -218,6 +222,7 @@ class S3CSVTarget(FireflowerS3Target):
                 csv_writer = csv.writer(f)
                 self.write_values(csv_writer, tuples, header_tuple)
 
+    @profile_method(logger)
     def write_csv(self, df, **kwargs):
         if self.kwargs_out:
             kwargs = toolz.merge(self.kwargs_out, kwargs)
@@ -264,6 +269,7 @@ class S3CSVTarget(FireflowerS3Target):
         with self.open_csv_dict_stream(**kwargs) as stream:
             yield from stream
 
+    @profile_method(logger)
     def read_csv(self, **kwargs):
         if self.kwargs_in:
             kwargs = toolz.merge(self.kwargs_in, kwargs)
