@@ -10,4 +10,5 @@ structlog==16.0.0
 testfixtures==4.1.2
 moto==0.4.2
 httpretty==0.8.10
+humanize==0.5.1
 raven==5.25.0
