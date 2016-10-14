@@ -57,8 +57,8 @@ class TaskEvent(FireflowerDeclBase):
     __tablename__ = 'task_events'
 
     id = Column(Integer, primary_key=True)
-    task_id = Column(Integer, ForeignKey('tasks.id'))
-    event_name = Column(String(20))
+    task_id = Column(Integer, ForeignKey('tasks.id'), index=True)
+    event_name = Column(String(20), index=True)
     ts = Column(TIMESTAMP, index=True, nullable=False)
 
     def __repr__(self):
@@ -78,6 +78,7 @@ class TaskRecord(FireflowerDeclBase):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(128), index=True)
+    task_id = Column(String, index=True)
     host = Column(String(128))
     parameters = orm.relationship(
         'TaskParameter',
