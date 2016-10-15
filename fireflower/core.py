@@ -7,7 +7,7 @@ import uuid
 
 from luigi.interface import _WorkerSchedulerFactory
 from luigi.rpc import RemoteScheduler
-from luigi.scheduler import CentralPlannerScheduler, SimpleTaskState
+from luigi.scheduler import Scheduler, SimpleTaskState
 from luigi.s3 import S3Target
 
 __all__ = [
@@ -107,7 +107,7 @@ class FireflowerWorkerSchedulerFactory(_WorkerSchedulerFactory):
         return RemoteScheduler(url)
 
 
-class FireflowerCentralPlannerScheduler(CentralPlannerScheduler):
+class FireflowerCentralPlannerScheduler(Scheduler):
     def __init__(self, *args, **kwargs):
         state = kwargs.pop('state') if 'state' in kwargs else None
         super(FireflowerCentralPlannerScheduler, self).__init__(*args, **kwargs)

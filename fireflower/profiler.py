@@ -41,7 +41,11 @@ def profiling(logger, key=None, scale=1, to_profile=True, **kwargs):
         log_kwargs['max_mem_used'] = humanize.naturalsize(after_max_mem_usage - before_max_mem_usage)
         level = logging.INFO if num_secs > 0.1 else logging.DEBUG
 
-        logger.log(level, "profiling_end", **log_kwargs)
+        if level == logging.INFO:
+            logger.info("profiling_end", **log_kwargs)
+        elif level == logging.DEBUG:
+            logger.debug("profiling_end", **log_kwargs)
+
 
 
 def profile(logger, **profile_kwargs):
