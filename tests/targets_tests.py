@@ -1,4 +1,6 @@
 import boto
+import gzip
+import luigi
 import os
 import pandas as pd
 
@@ -14,6 +16,66 @@ from fireflower.types import FeatureType
 
 
 class TargetsTests(TestCase):
+
+    @parameterized.expand([
+        (luigi.format.Gzip, b'x,y', b'\x1f\x8b'),  # gz magic number
+        (None, 'x,y', b'x,'),  # first two chars of csv header
+    ])
+    def test_compressed_is_compressed_FireflowerS3Target(self, format, contents, first_two_bytes):
+        with TempDirectory() as d:
+
+            def getenv(v, _):
+                # Is there a better way to assert arguments?
+                self.assertEqual(v, 'LOCAL_S3_PATH')
+                return d.path
+
+            with mock.patch('fireflower.targets.os.getenv',
+                            side_effect=getenv):
+                s = FireflowerS3Target('s3://test.csv.gz', format=format)
+                with s.open('w') as f:
+                    f.write(contents)
+                with open(os.path.join(d.path, 'test.csv.gz'), 'rb') as f:
+                    assert f.read(2) == first_two_bytes
+
+    @parameterized.expand([
+        (True, b'\x1f\x8b'),  # gz magic number
+        (False, b'x,'),  # first two chars of csv header
+    ])
+    def test_compressed_is_compressed_S3CSVTarget(self, compressed, first_two_bytes):
+        with TempDirectory() as d:
+
+            def getenv(v, _):
+                # Is there a better way to assert arguments?
+                self.assertEqual(v, 'LOCAL_S3_PATH')
+                return d.path
+
+            with mock.patch('fireflower.targets.os.getenv',
+                            side_effect=getenv):
+                s = S3CSVTarget('s3://test.csv.gz', compressed=compressed)
+                tuples = [(1, 2), (3, 4)]
+                s.write_csv_tuples(tuples, ('x', 'y'))
+                with open(os.path.join(d.path, 'test.csv.gz'), 'rb') as f:
+                    assert f.read(2) == first_two_bytes
+
+    def test_local_file_passthru_bytes(self):
+        with TempDirectory() as d:
+
+            def getenv(v, _):
+                # Is there a better way to assert arguments?
+                self.assertEqual(v, 'LOCAL_S3_PATH')
+                return d.path
+
+            with mock.patch('fireflower.targets.os.getenv',
+                            side_effect=getenv):
+
+                # Passthru bytes with format=Nop instead of trying to encode/decode as utf8
+                s = FireflowerS3Target('some_file.txt.gz', format=luigi.format.Nop)
+                with s.open('w') as fout:
+                    fout.write(gzip.compress('asdf'.encode('utf8')))
+                    fout.write(gzip.compress('fdsa'.encode('utf8')))
+                with s.open('r') as fin:
+                    expected_bytes = fin.read()
+                    self.assertEqual('asdffdsa', gzip.decompress(expected_bytes).decode('utf8'))
 
     @parameterized.expand([
         (True, True),

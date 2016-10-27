@@ -1,12 +1,14 @@
 import os
 import csv
 from contextlib import contextmanager
-from io import TextIOWrapper, BufferedWriter, FileIO, BufferedReader
+from io import TextIOWrapper
 from gzip import GzipFile
 
 import luigi
 import structlog
+from luigi.file import LocalTarget
 from luigi.s3 import S3Target
+from luigi.target import FileSystemTarget
 import pandas as pd
 import toolz
 
@@ -23,54 +25,31 @@ __all__ = [
 logger = structlog.get_logger(__name__)
 
 
-class FireflowerS3Target(S3Target):
-    """ Operates the same way as S3Target, except it looks for an environment variable
-    LOCAL_S3_PATH, which is a path on your local machine to store s3 files. If this is set,
-    the target will read / write to this path by stripping off s3:// and following the rest of the path.
-    Currently only supports compressed / Text formats, could support other formats as needed
+class FireflowerS3Target(FileSystemTarget):
+    """ Operates the same way as S3Target, except it looks for an environment variable LOCAL_S3_PATH
+    and kwarg named local_s3_path, which is a path on your local machine to store s3 files. If this
+    is set, the target will read / write to this path by stripping off s3:// and following the rest
+    of the path. Supports any format supported by FileSystemTarget.
     """
 
-    fs = None
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # TODO: consider making class variable (need to test properly)
-        self.local_s3_path = os.getenv('LOCAL_S3_PATH', None)
+    def __init__(self, path, *args, **kwargs):
+        self.local_s3_path = kwargs.pop('local_s3_path', os.getenv('LOCAL_S3_PATH', None))
+        if not self.local_s3_path:
+            self._proxy = S3Target(path, *args, **kwargs)
+        else:
+            path = os.path.join(self.local_s3_path, path.replace('s3://', ''))
+            self._proxy = LocalTarget(path, *args, **kwargs)
 
     @property
-    def local_path(self):
-        assert self.local_s3_path
-        modified_path = self.path.replace('s3://', '')
-        return os.path.join(self.local_s3_path, modified_path)
+    def path(self):
+        return self._proxy.path
 
-    def exists(self):
-        if self.local_s3_path:
-            return os.path.isfile(self.local_path)
-        else:
-            return super().exists()
+    @property
+    def fs(self):
+        return self._proxy.fs
 
     def open(self, mode='r'):
-        if mode not in ('r', 'w'):
-            raise ValueError("Unsupported open mode '%s'" % mode)
-
-        if not self.local_s3_path:
-            return super().open(mode)
-
-        is_compressed = getattr(self, 'compressed', False)
-
-        if mode == 'w':
-            if is_compressed:
-                # compressed files are rewrapped later
-                return BufferedWriter(FileIO(self.local_path, 'w'))
-            else:
-                return TextIOWrapper(BufferedWriter(FileIO(self.local_path, 'w')))
-
-        else:
-            if is_compressed:
-                # compressed files are rewrapped later
-                return BufferedReader(FileIO(self.local_path, 'r'))
-            else:
-                return TextIOWrapper(BufferedReader(FileIO(self.local_path, 'r')))
+        return self._proxy.open(mode)
 
 
 class DBTaskOutputTarget(luigi.Target):
