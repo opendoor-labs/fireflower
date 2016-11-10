@@ -63,6 +63,8 @@ def luigi_run_wrapper(func):
     def wrapper(self, *args, **kwargs):
         task_uuid = str(uuid.uuid4())
         try:
+            logger.new()  # Clear everything from previous .bind() calls
+            logger.bind(task_uuid=task_uuid)
             with FireflowerStateManager.bind_structlog(
                     uuid=task_uuid,
                     task_family=self.task_family):
