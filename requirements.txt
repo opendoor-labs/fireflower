@@ -1,6 +1,6 @@
 arrow==0.7.0
 boto==2.40.0
-luigi==2.3.2
+luigi==2.6.0
 SQLAlchemy==1.1.1
 toolz==0.7.2
 pandas==0.17.1
