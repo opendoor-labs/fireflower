@@ -45,56 +45,50 @@ class FireflowerOutputTask(FireflowerTask):
 
 class DateParameterTask(FireflowerTask):
     """
-    Convenience mixin to provide start_date and end_date luigi parameters with
-    values defaulting to yesterday and today. This mixin also provides a handy
-    conversion to string types (e.g. for tasks that accept date strings
-    only).
+    Convenience mixin to provide start_date and end_date luigi parameters.
+    This mixin also provides a handy conversion to string types (e.g. for tasks that accept date strings only).
     """
-    start_date = luigi.DateParameter(default=None)
-    end_date = luigi.DateParameter(default=None)
+    start_date = luigi.DateParameter()
+    end_date = luigi.DateParameter()
 
     def __init__(self, *args, **kwargs):
-        start = kwargs.get('start_date', datetime.utcnow() - timedelta(1))
-        end = kwargs.get('end_date', datetime.utcnow())
-        kwargs['start_date'] = to_date(start, raise_=True)
-        kwargs['end_date'] = to_date(end, raise_=True)
+        self.start = to_date(kwargs.get('start_date'), raise_=True)
+        self.end = to_date(kwargs.get('end_date'), raise_=True)
         super(DateParameterTask, self).__init__(*args, **kwargs)
 
     @property
     def start_date_str(self):
-        return self.start_date.strftime('%Y-%m-%d')
+        return self.start.strftime('%Y-%m-%d')
 
     @property
     def end_date_str(self):
-        return self.end_date.strftime('%Y-%m-%d')
+        return self.end.strftime('%Y-%m-%d')
 
 
 class DateHourParameterTask(FireflowerTask):
-    start_datetime = luigi.DateHourParameter(default=None)
-    end_datetime = luigi.DateHourParameter(default=None)
+    start_datetime = luigi.DateHourParameter()
+    end_datetime = luigi.DateHourParameter()
 
     def __init__(self, *args, **kwargs):
-        start = kwargs.get('start_datetime', datetime.utcnow() - timedelta(1))
-        end = kwargs.get('end_datetime', datetime.utcnow())
-        kwargs['start_datetime'] = to_datetime(start, raise_=True)
-        kwargs['end_datetime'] = to_datetime(end, raise_=True)
+        self.start = to_date(kwargs.get('start_datetime'), raise_=True)
+        self.end = to_date(kwargs.get('end_datetime'), raise_=True)
         super(DateHourParameterTask, self).__init__(*args, **kwargs)
 
     @property
     def start_date_str(self):
-        return self.start_datetime.strftime('%Y-%m-%d')
+        return self.start.strftime('%Y-%m-%d')
 
     @property
     def end_date_str(self):
-        return self.end_datetime.strftime('%Y-%m-%d')
+        return self.end.strftime('%Y-%m-%d')
 
     @property
     def start_datetime_str(self):
-        return self.start_datetime.strftime('%Y-%m-%d %H:00')
+        return self.start.strftime('%Y-%m-%d %H:00')
 
     @property
     def end_datetime_str(self):
-        return self.end_datetime.strftime('%Y-%m-%d %H:00')
+        return self.end.strftime('%Y-%m-%d %H:00')
 
 
 class SignatureTask(FireflowerTask):
