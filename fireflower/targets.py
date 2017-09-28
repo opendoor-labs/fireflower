@@ -7,7 +7,7 @@ from gzip import GzipFile
 import luigi
 import structlog
 from luigi.file import LocalTarget
-from luigi.s3 import S3Target
+from luigi.contrib.s3 import S3Target
 from luigi.target import FileSystemTarget
 import pandas as pd
 import toolz

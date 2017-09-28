@@ -13,7 +13,7 @@ __all__ = [
 
 class JSONParameter(Parameter):
     def serialize(self, x):
-        return json.dumps(x)
+        return json.dumps(x, sort_keys=True)
 
     def parse(self, x):
         return json.loads(x)
