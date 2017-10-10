@@ -1,7 +1,8 @@
-import json
 from datetime import date, datetime, time
+import json
 
 import arrow
+import requests
 from sqlalchemy import TypeDecorator, TEXT
 
 
@@ -45,6 +46,52 @@ def deep_sorted(d):
         return sorted(deep_sorted(v) for v in d)
     else:
         return d
+
+
+def get_pending_task_count(scheduler_host, scheduler_port):
+    '''
+    Hits the Luigi scheduler to retrieve the number of pending tasks.
+    This computation is made a little more complex by the fact that Luigi
+    treats upstream failed and disabled tasks as still pending. So to get the
+    true count of pending tasks, we have to fetch the lists for all three,
+    then subtract out the disabled / failed tasks.
+    '''
+
+    scheduler_url = f'http://{scheduler_host}:{scheduler_port}/api/task_list'
+    pending_filters = ['', 'UPSTREAM_DISABLED', 'UPSTREAM_FAILED']
+    responses = [
+        requests.get(
+            scheduler_url,
+            params={'data': json.dumps({'status': 'PENDING', 'upstream_status': p})},
+            timeout=10
+        )
+        for p in pending_filters
+    ]
+    status_codes = [r.status_code for r in responses]
+    if any([code != 200 for code in status_codes]):
+        raise RuntimeError(f'Failed to retrive pending task_lists. Response codes: {status_codes}')
+
+    pending_task_id_sets = [set(r.json()['response'].keys()) for r in responses]
+    actual_pending_count = len(pending_task_id_sets[0] - pending_task_id_sets[1] - pending_task_id_sets[2])
+
+    return actual_pending_count
+
+
+def get_running_task_count(scheduler_host, scheduler_port):
+    '''
+    Gets the running task count from the Luigi scheduler.
+    '''
+
+    scheduler_url = f'http://{scheduler_host}:{scheduler_port}/api/task_list'
+    response = requests.get(
+        scheduler_url,
+        params={'data': json.dumps({'status': 'RUNNING'})},
+        timeout=10
+    )
+    if response.status_code != 200:
+        raise RuntimeError(f'Failed to retrive running task_lists. Response code: {status_code}')
+
+    return len(response.json()['response'].keys())
 
 
 def to_date(obj, default=None, raise_=False):
