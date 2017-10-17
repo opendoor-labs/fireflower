@@ -28,6 +28,7 @@ class FireflowerStateManager(object):
     session = None
     structlog_threadlocal = False
     sentry = None
+    dogstatsd = None
 
     @classmethod
     def register_sqlalchemy_session(cls, session):
@@ -36,6 +37,10 @@ class FireflowerStateManager(object):
     @classmethod
     def register_sentry(cls, sentry):
         cls.sentry = sentry
+
+    @classmethod
+    def register_datadog_dogstatsd(cls, dogstatsd):
+        cls.dogstatsd = dogstatsd
 
     @classmethod
     def register_structlog_threadlocal(cls):
@@ -79,11 +84,13 @@ def luigi_run_wrapper(func):
                     'task_kwargs': self.param_kwargs,
                 }
                 FireflowerStateManager.sentry.captureException(extra=extra)
+                FireflowerStateManager.dogstatsd.close_buffer()
             raise
         finally:
             if (FireflowerStateManager.sentry and
                     FireflowerStateManager.sentry.client):
                 FireflowerStateManager.sentry.client.context.clear()
+                FireflowerStateManager.dogstatsd.close_buffer()
     return wrapper
 
 
