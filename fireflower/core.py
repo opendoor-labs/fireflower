@@ -94,9 +94,12 @@ def luigi_run_wrapper(func):
             if (FireflowerStateManager.sentry and
                     FireflowerStateManager.sentry.client):
                 FireflowerStateManager.sentry.client.context.clear()
-                if (FireflowerStateManager.datadog_dogstatsd and
-                        FireflowerStateManager.datadog_dogstatsd.buffer):
-                    FireflowerStateManager.datadog_dogstatsd.close_buffer()
+                if FireflowerStateManager.datadog_dogstatsd:
+                    try:
+                        FireflowerStateManager.datadog_dogstatsd.close_buffer()
+                    except AttributeError:
+                        pass
+
     return wrapper
 
 
