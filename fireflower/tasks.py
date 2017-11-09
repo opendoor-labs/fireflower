@@ -2,10 +2,10 @@ import hashlib
 from datetime import datetime, timedelta
 
 import luigi
+from luigi.contrib.s3 import S3EmrTarget
 from luigi.task_register import Register
 
-from fireflower.core import FireflowerStateManager, \
-    luigi_run_wrapper
+from fireflower.core import luigi_run_wrapper
 from fireflower.parameters import SignatureParameter
 from fireflower.targets import DBTaskOutputTarget
 from fireflower.utils import to_date, to_datetime, deep_sorted
@@ -13,6 +13,7 @@ from fireflower.utils import to_date, to_datetime, deep_sorted
 __all__ = [
     'FireflowerTask',
     'FireflowerOutputTask',
+    'EmrOutputTask',
     'DateParameterTask',
     'DateHourParameterTask',
     'SignatureTask',
@@ -23,6 +24,7 @@ class FireflowerLuigiMeta(Register):
     """
     Metaclass to wrap the LuigiTask.run method, for sentry & logging.
     """
+
     def __call__(cls, *args, **kwargs):
         if not cls._is_run_method_wrapped_by_fireflower:
             cls.run = luigi_run_wrapper(cls.run)
@@ -39,8 +41,20 @@ class FireflowerOutputTask(FireflowerTask):
     Base luigi task class for using the signals task_outputs table to mark
     task completion and to also communicate return values to downstream tasks.
     """
+
     def output(self):
         return DBTaskOutputTarget.create(self)
+
+
+class EmrOutputTask(FireflowerTask):
+    path = luigi.Parameter()
+
+    # reusing db logging logic
+    def db_output(self):
+        return DBTaskOutputTarget.create(self)
+
+    def output(self):
+        return S3EmrTarget(self.path)
 
 
 class DateParameterTask(FireflowerTask):
@@ -101,7 +115,7 @@ class SignatureTask(FireflowerTask):
     def __init__(self, *args, **kwargs):
         super(SignatureTask, self).__init__(*args, **kwargs)
 
-        param_objs = self.get_params()    # [(param_name, param_obj)]
+        param_objs = self.get_params()  # [(param_name, param_obj)]
         param_values = self.param_kwargs  # {param_name: param_value}
 
         task_id_parts = []
