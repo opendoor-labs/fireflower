@@ -8,7 +8,7 @@ import uuid
 from luigi.interface import _WorkerSchedulerFactory
 from luigi.rpc import RemoteScheduler
 from luigi.scheduler import Scheduler, SimpleTaskState
-from luigi.s3 import S3Target
+from luigi.contrib.s3 import S3Target
 
 __all__ = [
     'FireflowerStateManager',
